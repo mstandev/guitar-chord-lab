@@ -172,10 +172,24 @@ function Header({ page, onNavigate, themeMode, onThemeChange }) {
   </header>;
 }
 
+function intervalName(interval) {
+  if (interval === 0) return "ROOT";
+  if (interval === 3) return "MIN 3RD";
+  if (interval === 4) return "MAJ 3RD";
+  if (interval === 7) return "5TH";
+  if (interval === 10) return "♭7TH";
+  if (interval === 11) return "MAJ 7TH";
+  return `INTERVAL ${interval}`;
+}
+
 function VoicingDetails({ selected, frets }) {
   const detected = useMemo(() => detectChord(frets), [frets]);
   const isEdited = selected.frets.some((fret, index) => fret !== frets[index]);
-  return <section className="voicing-details"><div className="details-heading"><div><p className="kicker">VOICING DETAILS</p><h2>{isEdited ? detected.label : `${selected.root}${selected.suffix}`} anatomy</h2></div><span className="source-tag">{selected.source}</span></div><div className="interval-grid">{selected.intervals.map((interval, index) => <div key={interval} className="interval"><span>{index === 0 ? "ROOT" : `INTERVAL ${index + 1}`}</span><strong>{interval === 0 ? "1" : interval === 3 ? "♭3" : interval === 4 ? "3" : interval === 7 ? "5" : interval === 10 ? "♭7" : interval === 11 ? "7" : interval}</strong></div>)}</div><p className="details-copy">This is a common {selected.shapeName.toLowerCase()} used in standard guitar voicing. Every note is shown above at its actual string and fret position.</p></section>;
+  const rootLabel = isEdited ? (detected.label === "Custom voicing" ? "—" : detected.label.split("/")[0].replace(/(maj7|m7|7|m)$/, "")) : selected.root;
+  const shapeLabel = isEdited ? "Edited shape" : selected.shapeName;
+  const startLabel = selected.startingStringLabel ?? "Custom";
+  const playedStrings = frets.filter((fret) => fret !== null && fret !== "muted").length;
+  return <section className="voicing-details"><div className="details-heading"><div><p className="kicker">VOICING DETAILS</p><h2>{isEdited ? detected.label : `${selected.root}${selected.suffix}`} anatomy</h2></div></div><div className="details-summary"><div><span>ROOT</span><strong>{rootLabel}</strong></div><div><span>ROOT STARTS</span><strong>{startLabel}</strong></div><div><span>SHAPE</span><strong>{shapeLabel}</strong></div><div><span>PLAYED</span><strong>{playedStrings} / 6</strong></div></div><div className="details-intervals">{selected.intervals.map((interval) => <div className="details-interval-row" key={interval}><span>{intervalName(interval)}</span><strong>{interval === 0 ? "1" : interval === 3 ? "♭3" : interval === 4 ? "3" : interval === 7 ? "5" : interval === 10 ? "♭7" : interval === 11 ? "7" : interval}</strong></div>)}</div><p className="details-copy">{isEdited ? "Live analysis of the notes currently placed on the fretboard." : `Common ${selected.shapeName.toLowerCase()} in standard tuning.`}</p></section>;
 }
 
 function Library({ selectedId, selected, frets, onSelect }) {
