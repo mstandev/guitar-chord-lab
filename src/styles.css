@@ -132,3 +132,11 @@ button:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
 
 @media (max-width: 980px) { .composer-heading { align-items: flex-start; flex-direction: column; gap: 18px; }.composer-toolbar { align-items: flex-start; flex-direction: column; } .composer-builder-controls { justify-content: flex-start; } }
 @media (max-width: 700px) { .composer-workspace { padding: 35px 18px 65px; }.composer-heading h1 { font-size: 42px; }.composer-builder-controls { flex-wrap: wrap; }.composer-builder-controls > button { flex: 1; justify-content: center; }.strip-step-shell { min-width: 116px; }.composer-slot-actions button { flex: 1; justify-content: center; } }
+
+/* Keep the voicing context with the library controls. */
+.library-panel > .voicing-details { margin-top: 32px; padding: 22px 0 0; border: 0; border-top: 1px solid #303230; background: transparent; }
+.library-panel .details-heading { display: block; padding-bottom: 17px; }
+.library-panel .source-tag { display: block; max-width: none; margin-top: 11px; text-align: left; }
+.library-panel .interval-grid { flex-wrap: wrap; gap: 6px; margin-top: 17px; }
+.library-panel .interval { flex: 1 1 70px; min-width: 70px; padding: 9px 10px; }
+.library-panel .details-copy { max-width: none; margin-top: 18px; }
