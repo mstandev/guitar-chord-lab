@@ -236,5 +236,5 @@ button:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
 .theme-control select, .template-select select { appearance: none; -webkit-appearance: none; background-image: none !important; padding-right: 42px; }
 .theme-control::after, .template-select::after { position: absolute; width: 8px; height: 8px; border-right: 1.5px solid #b8b9b0; border-bottom: 1.5px solid #b8b9b0; content: ""; pointer-events: none; transform: rotate(45deg); }
 .theme-control::after { top: 50%; right: 13px; margin-top: -5px; }
-.template-select::after { right: 13px; bottom: 14px; }
+.template-select::after { right: 13px; bottom: 18px; }
 :root[data-theme="light"] .theme-control::after, :root[data-theme="light"] .template-select::after { border-color: #555b53; }
