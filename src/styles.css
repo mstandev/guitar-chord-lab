@@ -140,6 +140,7 @@ button:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
 .library-panel .interval-grid { flex-wrap: wrap; gap: 6px; margin-top: 17px; }
 .library-panel .interval { flex: 1 1 70px; min-width: 70px; padding: 9px 10px; }
 .library-panel .details-copy { max-width: none; margin-top: 18px; }
+.composer-heading { display: none; }
 
 .header-tools { display: flex; align-items: center; gap: 18px; }
 .theme-control select { min-width: 122px; padding: 7px 28px 7px 9px; border: 1px solid #393b38; border-radius: 0; outline: 0; background: #232523; color: #b8b9b0; cursor: pointer; font: 14px var(--mono); }
