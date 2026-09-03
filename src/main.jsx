@@ -161,14 +161,14 @@ function Icon({ children }) {
   return <span className="icon" aria-hidden="true">{children}</span>;
 }
 
-function Header({ page, onNavigate }) {
+function Header({ page, onNavigate, themeMode, onThemeChange }) {
   return <header className="topbar">
     <div className="brand"><span className="brand-mark"><i /><i /><i /></span><span>CHORD ATLAS</span></div>
     <nav className="header-nav" aria-label="Primary navigation">
       <button className={`header-tab ${page === "library" ? "active" : ""}`} onClick={() => onNavigate("library")}>Chord library</button>
       <button className={`header-tab ${page === "composer" ? "active" : ""}`} onClick={() => onNavigate("composer")}>Composer</button>
     </nav>
-    <div className="header-status">E STANDARD</div>
+    <div className="header-tools"><label className="theme-control"><span className="sr-only">Color theme</span><select aria-label="Color theme" value={themeMode} onChange={(event) => onThemeChange(event.target.value)}><option value="system">System theme</option><option value="light">Light theme</option><option value="dark">Dark theme</option></select></label><div className="header-status">E STANDARD</div></div>
   </header>;
 }
 
@@ -344,14 +344,44 @@ function ComposerPage({ selected, frets, setFrets, setSelected, progression, set
   return <div className="app-grid composer-grid"><Library selectedId={selected.id} selected={selected} frets={frets} onSelect={selectLibraryShape} /><main className="composer-workspace"><div className="composer-heading"><div><p className="kicker">02 / COMPOSE</p><h1>One fretboard.<br /><em>Many possibilities.</em></h1></div><p>Build your progression one chord at a time. Select a step to edit it, or add a new shape from the library.</p></div><ProgressionStrip progression={progression} activeSlotId={activeSlotId} onSelect={selectSlot} onRemove={removeSlot} /><div className="composer-toolbar"><div><p className="kicker">COMMON STARTING POINTS</p><span>Load a template, then make it yours.</span></div><label className="template-select"><span>CHOOSE PROGRESSION</span><select aria-label="Choose a common chord progression" value="" onChange={(event) => { const template = PROGRESSION_TEMPLATES.find((item) => item.id === event.target.value); if (template) loadTemplate(template); }}><option value="">Select a progression…</option>{PROGRESSION_TEMPLATES.map((template) => <option key={template.id} value={template.id}>{template.name} · {template.description}</option>)}</select></label></div><div className="composer-builder-controls"><label className="tempo-control"><span>BPM</span><input type="number" min="40" max="180" value={bpm} onChange={(event) => setBpm(Number(event.target.value) || 72)} /></label><button className="play-button primary" disabled={!hasPlayableChords} onClick={() => playProgression(progression, bpm)}><Icon>♬</Icon> Play all</button></div><ShapeEditor embedded selected={selected} frets={frets} setFrets={updateActiveFrets} onAddToProgression={addCurrent} /><p className="composer-hint">Tip: the library on the left stays available while you compose. Selecting a library shape edits the shared fretboard; use “Add to progression” to save it as a new step.</p></main></div>;
 }
 
+function getInitialThemeMode() {
+  if (typeof window === "undefined") return "system";
+  try {
+    const saved = window.localStorage.getItem("chord-atlas-theme");
+    return ["system", "light", "dark"].includes(saved) ? saved : "system";
+  } catch {
+    return "system";
+  }
+}
+
 function App() {
   const [page, setPage] = useState("composer");
   const [selected, setSelected] = useState(LIBRARY.find((entry) => entry.id === "E-6-minor"));
   const [frets, setFrets] = useState(selected.frets);
   const [progression, setProgression] = useState([]);
   const [activeSlotId, setActiveSlotId] = useState(null);
+  const [themeMode, setThemeMode] = useState(getInitialThemeMode);
+  const [systemTheme, setSystemTheme] = useState(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  const activeTheme = themeMode === "system" ? systemTheme : themeMode;
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return undefined;
+    const media = window.matchMedia("(prefers-color-scheme: light)");
+    const update = () => setSystemTheme(media.matches ? "light" : "dark");
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = activeTheme;
+    try {
+      if (themeMode === "system") window.localStorage.removeItem("chord-atlas-theme");
+      else window.localStorage.setItem("chord-atlas-theme", themeMode);
+    } catch {
+      // Theme still applies for this session when storage is unavailable.
+    }
+  }, [activeTheme, themeMode]);
   const addToProgression = (entry) => { const slot = makeProgressionChord(entry); setProgression((current) => [...current, slot]); setActiveSlotId(slot.instanceId); setSelected(slot); setFrets([...slot.frets]); setPage("composer"); };
-  return <div className="app-shell"><Header page={page} onNavigate={setPage} />{page === "library" ? <LibraryPage selected={selected} frets={frets} setFrets={setFrets} setSelected={setSelected} addToProgression={addToProgression} /> : <ComposerPage selected={selected} frets={frets} setFrets={setFrets} setSelected={setSelected} progression={progression} setProgression={setProgression} activeSlotId={activeSlotId} setActiveSlotId={setActiveSlotId} onOpenLibrary={() => setPage("library")} />}</div>;
+  return <div className="app-shell"><Header page={page} onNavigate={setPage} themeMode={themeMode} onThemeChange={setThemeMode} />{page === "library" ? <LibraryPage selected={selected} frets={frets} setFrets={setFrets} setSelected={setSelected} addToProgression={addToProgression} /> : <ComposerPage selected={selected} frets={frets} setFrets={setFrets} setSelected={setSelected} progression={progression} setProgression={setProgression} activeSlotId={activeSlotId} setActiveSlotId={setActiveSlotId} onOpenLibrary={() => setPage("library")} />}</div>;
 }
 
 createRoot(document.getElementById("root")).render(<StrictMode><App /></StrictMode>);
