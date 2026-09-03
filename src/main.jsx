@@ -187,7 +187,9 @@ function VoicingDetails({ selected, frets }) {
   const isEdited = selected.frets.some((fret, index) => fret !== frets[index]);
   const rootLabel = isEdited ? (detected.label === "Custom voicing" ? "—" : detected.label.split("/")[0].replace(/(maj7|m7|7|m)$/, "")) : selected.root;
   const shapeLabel = isEdited ? "Edited shape" : selected.shapeName;
-  return <section className="voicing-details"><div className="details-heading"><div><p className="kicker">VOICING DETAILS</p><h2>{isEdited ? detected.label : `${selected.root}${selected.suffix}`} anatomy</h2></div></div><div className="details-summary"><div><span>ROOT</span><strong>{rootLabel}</strong></div><div><span>SHAPE</span><strong>{shapeLabel}</strong></div></div><div className="details-intervals">{selected.intervals.map((interval) => <div className="details-interval-row" key={interval}><span>{intervalName(interval)}</span><strong>{interval === 0 ? "1" : interval === 3 ? "♭3" : interval === 4 ? "3" : interval === 7 ? "5" : interval === 10 ? "♭7" : interval === 11 ? "7" : interval}</strong></div>)}</div><p className="details-copy">{isEdited ? "Live analysis of the notes currently placed on the fretboard." : `Common ${selected.shapeName.toLowerCase()} in standard tuning.`}</p></section>;
+  const rootPc = ROOTS.find((root) => root.name === rootLabel)?.pc;
+  const noteForInterval = (interval) => typeof rootPc === "number" ? noteName(rootPc + interval) : "—";
+  return <section className="voicing-details"><div className="details-heading"><div><p className="kicker">VOICING DETAILS</p><h2>{isEdited ? detected.label : `${selected.root}${selected.suffix}`} anatomy</h2></div></div><div className="details-summary"><div><span>ROOT</span><strong>{rootLabel}</strong></div><div><span>SHAPE</span><strong>{shapeLabel}</strong></div></div><div className="details-intervals">{selected.intervals.map((interval) => <div className="details-interval-row" key={interval}><span>{intervalName(interval)}</span><strong>{noteForInterval(interval)}</strong></div>)}</div><p className="details-copy">{isEdited ? "Live analysis of the notes currently placed on the fretboard." : `Common ${selected.shapeName.toLowerCase()} in standard tuning.`}</p></section>;
 }
 
 function Library({ selectedId, selected, frets, onSelect }) {
@@ -356,44 +358,3 @@ function ComposerPage({ selected, frets, setFrets, setSelected, progression, set
   return <div className="app-grid composer-grid"><Library selectedId={selected.id} selected={selected} frets={frets} onSelect={selectLibraryShape} /><main className="composer-workspace"><div className="composer-heading"><div><h1>One fretboard.<br /><em>Many possibilities.</em></h1></div><p>Build your progression one chord at a time. Select a step to edit it, or add a new shape from the library.</p></div><ProgressionStrip progression={progression} activeSlotId={activeSlotId} onSelect={selectSlot} onRemove={removeSlot} /><div className="composer-toolbar"><div><p className="kicker">COMMON STARTING POINTS</p><span>Load a template, then make it yours.</span></div><label className="template-select"><span>CHOOSE PROGRESSION</span><select aria-label="Choose a common chord progression" value="" onChange={(event) => { const template = PROGRESSION_TEMPLATES.find((item) => item.id === event.target.value); if (template) loadTemplate(template); }}><option value="">Select a progression…</option>{PROGRESSION_TEMPLATES.map((template) => <option key={template.id} value={template.id}>{template.name} · {template.description}</option>)}</select></label></div><div className="composer-builder-controls"><label className="tempo-control"><span>BPM</span><input type="number" min="40" max="180" value={bpm} onChange={(event) => setBpm(Number(event.target.value) || 72)} /></label><button className="play-button primary" disabled={!hasPlayableChords} onClick={() => playProgression(progression, bpm)}><Icon>♬</Icon> Play all</button></div><ShapeEditor embedded selected={selected} frets={frets} setFrets={updateActiveFrets} onAddToProgression={addCurrent} /><p className="composer-hint">Tip: the library on the left stays available while you compose. Selecting a library shape edits the shared fretboard; use “Add to progression” to save it as a new step.</p></main></div>;
 }
 
-function getInitialThemeMode() {
-  if (typeof window === "undefined") return "system";
-  try {
-    const saved = window.localStorage.getItem("chord-atlas-theme");
-    return ["system", "light", "dark"].includes(saved) ? saved : "system";
-  } catch {
-    return "system";
-  }
-}
-
-function App() {
-  const [page, setPage] = useState("composer");
-  const [selected, setSelected] = useState(LIBRARY.find((entry) => entry.id === "E-6-minor"));
-  const [frets, setFrets] = useState(selected.frets);
-  const [progression, setProgression] = useState([]);
-  const [activeSlotId, setActiveSlotId] = useState(null);
-  const [themeMode, setThemeMode] = useState(getInitialThemeMode);
-  const [systemTheme, setSystemTheme] = useState(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark");
-  const activeTheme = themeMode === "system" ? systemTheme : themeMode;
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return undefined;
-    const media = window.matchMedia("(prefers-color-scheme: light)");
-    const update = () => setSystemTheme(media.matches ? "light" : "dark");
-    update();
-    media.addEventListener?.("change", update);
-    return () => media.removeEventListener?.("change", update);
-  }, []);
-  useEffect(() => {
-    document.documentElement.dataset.theme = activeTheme;
-    try {
-      if (themeMode === "system") window.localStorage.removeItem("chord-atlas-theme");
-      else window.localStorage.setItem("chord-atlas-theme", themeMode);
-    } catch {
-      // Theme still applies for this session when storage is unavailable.
-    }
-  }, [activeTheme, themeMode]);
-  const addToProgression = (entry) => { const slot = makeProgressionChord(entry); setProgression((current) => [...current, slot]); setActiveSlotId(slot.instanceId); setSelected(slot); setFrets([...slot.frets]); setPage("composer"); };
-  return <div className="app-shell"><Header page={page} onNavigate={setPage} themeMode={themeMode} onThemeChange={setThemeMode} />{page === "library" ? <LibraryPage selected={selected} frets={frets} setFrets={setFrets} setSelected={setSelected} addToProgression={addToProgression} /> : <ComposerPage selected={selected} frets={frets} setFrets={setFrets} setSelected={setSelected} progression={progression} setProgression={setProgression} activeSlotId={activeSlotId} setActiveSlotId={setActiveSlotId} onOpenLibrary={() => setPage("library")} />}</div>;
-}
-
-createRoot(document.getElementById("root")).render(<StrictMode><App /></StrictMode>);
