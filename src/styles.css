@@ -232,5 +232,9 @@ button:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
 :root[data-theme="light"] .library-panel .details-interval-row span { color: #687068; }
 
 /* Keep every dropdown caret inset from the edge by the same amount. */
-.theme-control select, .template-select select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='m3 5 4 4 4-4' fill='none' stroke='%23b8b9b0' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 14px; padding-right: 42px; }
-:root[data-theme="light"] .theme-control select, :root[data-theme="light"] .template-select select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='m3 5 4 4 4-4' fill='none' stroke='%23555b53' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.theme-control, .template-select { position: relative; }
+.theme-control select, .template-select select { appearance: none; -webkit-appearance: none; background-image: none !important; padding-right: 42px; }
+.theme-control::after, .template-select::after { position: absolute; width: 8px; height: 8px; border-right: 1.5px solid #b8b9b0; border-bottom: 1.5px solid #b8b9b0; content: ""; pointer-events: none; transform: rotate(45deg); }
+.theme-control::after { top: 50%; right: 13px; margin-top: -5px; }
+.template-select::after { right: 13px; bottom: 14px; }
+:root[data-theme="light"] .theme-control::after, :root[data-theme="light"] .template-select::after { border-color: #555b53; }
