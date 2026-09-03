@@ -201,7 +201,7 @@ function Library({ selectedId, selected, frets, onSelect }) {
     if (matchingShape) onSelect(matchingShape);
   };
   return <aside className="library-panel">
-    <div className="panel-heading"><div><p className="kicker">01 / EXPLORE</p><h2>Chord library</h2></div><span className="count">{LIBRARY.length} SHAPES</span></div>
+    <div className="panel-heading"><div><p className="kicker">01 / EXPLORE</p><h2>Chord library</h2></div></div>
     <p className="panel-copy">A focused set of dependable guitar voicings. Pick a root, then explore its five essential families.</p>
     <div className="filter-label">ROOT NOTE</div>
     <div className="root-grid">{ROOTS.map((item) => <button key={item.name} className={`root-button ${root === item.name ? "active" : ""}`} onClick={() => setRoot(item.name)}>{item.name}</button>)}</div>
