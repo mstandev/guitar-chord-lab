@@ -41,6 +41,24 @@ const SHAPE_TEMPLATES = {
   },
 };
 
+const SHELL_SHAPES = {
+  "6": {
+    major: [0, null, null, 1, 0, null], minor: [0, null, null, 0, 0, null],
+    dominant7: [0, 2, 0, 1, null, null], major7: [0, 2, 1, 1, null, null],
+    minor7: [0, 2, 0, 0, null, null],
+  },
+  "5": {
+    major: [null, 0, 2, null, 2, null], minor: [null, 0, 2, null, 1, null],
+    dominant7: [null, 0, 2, 0, 2, null], major7: [null, 0, 2, 1, 2, null],
+    minor7: [null, 0, 2, 0, 1, null],
+  },
+  "4": {
+    major: [null, null, 0, 2, null, 2], minor: [null, null, 0, 2, null, 1],
+    dominant7: [null, null, 0, 2, 1, 2], major7: [null, null, 0, 2, 2, 2],
+    minor7: [null, null, 0, 2, 1, 1],
+  },
+};
+
 function fretForRoot(rootPc, basePc) {
   return (rootPc - basePc + 12) % 12;
 }
@@ -49,19 +67,25 @@ function makeLibrary() {
   return ROOTS.flatMap((root) => STARTING_STRINGS.flatMap((startingString) => QUALITIES.map((quality) => {
     const rootFret = fretForRoot(root.pc, startingString.basePc);
     const template = SHAPE_TEMPLATES[startingString.id][quality.id];
-    const frets = template.map((fret) => fret === null ? "muted" : fret + rootFret);
     const isOpen = rootFret === 0;
-    return {
-      id: `${root.name}-${startingString.id}-${quality.id}`,
-      root: root.name, rootPc: root.pc, startingString: startingString.id,
-      startingStringLabel: startingString.label, quality: quality.id,
-      qualityLabel: quality.label, suffix: quality.suffix, color: quality.color,
-      shapeName: isOpen ? "Open position" : `${startingString.shapeLabel} barre`,
-      frets, openPattern: isOpen ? frets.map((fret) => fret === "muted" ? "x" : fret).join("") : null,
-      source: isOpen ? "Common open-position voicing" : `Movable ${startingString.shapeLabel} voicing`,
-      intervals: quality.intervals,
-    };
-  })));
+    const shapes = [
+      { id: `${root.name}-${startingString.id}-${quality.id}`, template, shapeName: isOpen ? "Open position" : `${startingString.shapeLabel} barre`, source: isOpen ? "Common open-position voicing" : `Movable ${startingString.shapeLabel} voicing` },
+      { id: `${root.name}-${startingString.id}-${quality.id}-shell`, template: SHELL_SHAPES[startingString.id][quality.id], shapeName: "Shell voicing", source: "Compact chord-tone voicing" },
+    ].filter((shape, index, options) => options.findIndex((candidate) => candidate.template.every((fret, fretIndex) => fret === shape.template[fretIndex])) === index);
+    return shapes.map((shape) => {
+      const frets = shape.template.map((fret) => fret === null ? "muted" : fret + rootFret);
+      return {
+        id: shape.id,
+        root: root.name, rootPc: root.pc, startingString: startingString.id,
+        startingStringLabel: startingString.label, quality: quality.id,
+        qualityLabel: quality.label, suffix: quality.suffix, color: quality.color,
+        shapeName: shape.shapeName,
+        frets, openPattern: isOpen ? frets.map((fret) => fret === "muted" ? "x" : fret).join("") : null,
+        source: shape.source,
+        intervals: quality.intervals,
+      };
+    });
+  }))).flat();
 }
 
 const LIBRARY = makeLibrary();
@@ -161,13 +185,9 @@ function Icon({ children }) {
   return <span className="icon" aria-hidden="true">{children}</span>;
 }
 
-function Header({ page, onNavigate, themeMode, onThemeChange }) {
+function Header({ themeMode, onThemeChange }) {
   return <header className="topbar">
     <div className="brand"><span className="brand-mark"><i /><i /><i /></span><span>CHORD ATLAS</span></div>
-    <nav className="header-nav" aria-label="Primary navigation">
-      <button className={`header-tab ${page === "library" ? "active" : ""}`} onClick={() => onNavigate("library")}>Chord library</button>
-      <button className={`header-tab ${page === "composer" ? "active" : ""}`} onClick={() => onNavigate("composer")}>Composer</button>
-    </nav>
     <div className="header-tools"><label className="theme-control"><span className="sr-only">Color theme</span><select aria-label="Color theme" value={themeMode} onChange={(event) => onThemeChange(event.target.value)}><option value="system">System theme</option><option value="light">Light theme</option><option value="dark">Dark theme</option></select></label><div className="header-status">E STANDARD</div></div>
   </header>;
 }
@@ -275,13 +295,9 @@ function ShapeEditor({ selected, frets, setFrets, onAddToProgression, embedded =
   const canMove = (amount) => { const activeFrets = frets.filter((fret) => typeof fret === "number"); return activeFrets.length > 0 && activeFrets.every((fret) => fret + amount >= 0 && fret + amount <= MAX_FRET); };
   const moveShape = (amount) => { if (canMove(amount)) setFrets(frets.map((fret) => typeof fret === "number" ? fret + amount : fret)); };
   return <div className={`${embedded ? "shape-editor" : "workspace shape-editor"}`}>
-    <section className="analysis-card"><div className="analysis-main"><div className="analysis-title"><span className="eyebrow-dot" style={{ background: selected.color }} /><span>DETECTED VOICING</span>{isEdited && <span className="edited-pill">EDITED</span>}</div><div className="chord-name">{isEdited ? detected.label : `${selected.root}${selected.suffix}`}</div><div className="chord-meta"><span>{isEdited ? detected.detail : selected.qualityLabel}</span><span className="metadata-separator">•</span><span>{isEdited ? "Live analysis" : selected.shapeName}</span></div></div><div className="analysis-side"><div className="analysis-note"><span>ROOT</span><strong>{isEdited ? detected.label.split("/")[0].replace(/m(aj7|7)?$/, "") : selected.root}</strong></div><div className="analysis-note"><span>STRINGS</span><strong>{frets.filter((fret) => fret !== null && fret !== "muted").length}<small> / 6</small></strong></div></div></section>
+    <section className="analysis-card"><div className="analysis-main"><div className="chord-name">{isEdited ? detected.label : `${selected.root}${selected.suffix}`}</div><div className="chord-meta"><span>{isEdited ? detected.detail : selected.qualityLabel}</span><span className="metadata-separator">•</span><span>{isEdited ? "Live analysis" : selected.shapeName}</span></div></div><div className="analysis-side"><div className="analysis-note"><span>ROOT</span><strong>{isEdited ? detected.label.split("/")[0].replace(/m(aj7|7)?$/, "") : selected.root}</strong></div><div className="analysis-note"><span>STRINGS</span><strong>{frets.filter((fret) => fret !== null && fret !== "muted").length}<small> / 6</small></strong></div></div></section>
     <section className="editor-card"><div className="editor-heading"><div><p className="kicker">INTERACTIVE FRETBOARD</p><h2>Standard tuning <span>E A D G B E</span></h2></div><div className="editor-actions"><div className="move-actions" aria-label="Move chord shape"><button className="move-button" aria-label="Move chord shape left one fret" disabled={!canMove(-1)} onClick={() => moveShape(-1)}>←</button><button className="move-button" aria-label="Move chord shape right one fret" disabled={!canMove(1)} onClick={() => moveShape(1)}>→</button></div><button className="ghost-button" onClick={() => setFrets(selected.frets)}><Icon>↺</Icon> Reset</button><button className="play-button" onClick={() => playVoicing(frets, "individual")}><Icon>▶</Icon> Play notes</button><button className="play-button primary" onClick={() => playVoicing(frets, "strum")}><Icon>♬</Icon> Strum chord</button><button className="ghost-button add-progress-button" onClick={onAddToProgression}><Icon>＋</Icon> Add to progression</button></div></div><Fretboard key={selected.instanceId ?? selected.id} frets={frets} onChange={setFrets} /><div className="editor-footer"><span><i className="legend-dot" /> Click: add · click again: mute · click again: clear</span><span><i className="legend-open" /> Open string</span><span><i className="legend-mute">×</i> Mute shortcut</span></div></section>
   </div>;
-}
-
-function LibraryPage({ selected, frets, setFrets, setSelected, addToProgression }) {
-  return <div className="app-grid"><Library selectedId={selected.id} selected={selected} frets={frets} onSelect={(entry) => { setSelected(entry); setFrets(entry.frets); }} /><ShapeEditor selected={selected} frets={frets} setFrets={setFrets} onAddToProgression={() => addToProgression({ ...selected, frets: [...frets] })} /></div>;
 }
 
 const PROGRESSION_TEMPLATES = [
@@ -316,14 +332,14 @@ function ProgressionPage({ progression, setProgression, onOpenLibrary }) {
   const loadTemplate = (template) => setProgression(template.ids.map((id) => makeProgressionChord(LIBRARY.find((entry) => entry.id === id))));
   return <main className="progression-page"><div className="progression-hero"><div><p className="kicker">02 / COMPOSE</p><h1>Build a progression.</h1><p>Stack chord shapes, edit each voicing, and hear the movement as a single musical idea.</p></div><div className="progression-hero-mark">{[0, 1, 2, 3].map((item) => <span key={item} style={{ height: `${28 + item * 16}px` }} />)}</div></div>
     <section className="template-section"><div className="section-heading"><div><p className="kicker">START WITH A TEMPLATE</p><h2>Common progressions</h2></div><span>LOAD A PRESET, THEN MAKE IT YOURS</span></div><div className="template-grid">{PROGRESSION_TEMPLATES.map((template) => <button className="template-card" key={template.id} onClick={() => loadTemplate(template)}><span className="template-key">{template.key}</span><strong>{template.name}</strong><small>{template.description}</small><Icon>↗</Icon></button>)}</div></section>
-    <section className="builder-section"><div className="builder-toolbar"><div><p className="kicker">YOUR PROGRESSION</p><h2>{progression.length ? `${progression.length} chord${progression.length === 1 ? "" : "s"}` : "An empty canvas"}</h2></div><div className="builder-controls"><label className="tempo-control"><span>BPM</span><input type="number" min="40" max="180" value={bpm} onChange={(event) => setBpm(Number(event.target.value) || 72)} /></label><button className="ghost-button" onClick={addEmpty}><Icon>＋</Icon> Add empty chord</button><button className="play-button primary" disabled={!hasPlayableChords} onClick={() => playProgression(progression, bpm)}><Icon>♬</Icon> Play all</button></div></div>
+    <section className="builder-section"><div className="builder-toolbar"><div><p className="kicker">YOUR PROGRESSION</p><h2>{progression.length ? `${progression.length} chord${progression.length === 1 ? "" : "s"}` : "An empty canvas"}</h2></div><div className="builder-controls"><label className="tempo-control"><span>BPM</span><input type="number" min="40" max="180" value={bpm} onChange={(event) => setBpm(Number(event.target.value) || 72)} /></label><button className="ghost-button" onClick={addEmpty}><Icon>＋</Icon> Add empty chord</button><button className="play-button primary" disabled={!hasPlayableChords} onClick={() => playProgression(progression, bpm)}><Icon>♬</Icon> Play progression</button></div></div>
       {!progression.length ? <div className="empty-progression"><div className="empty-orbit">＋</div><h3>Start from silence.</h3><p>Add an empty chord to build from the fretboard, or load a common progression above.</p><div><button className="play-button primary" onClick={addEmpty}>＋ Add first chord</button><button className="ghost-button" onClick={onOpenLibrary}>Browse chord library</button></div></div> : <div className="progression-list">{progression.map((chord, index) => <ProgressionCard key={chord.instanceId} chord={chord} index={index} onChange={(next) => updateChord(index, next)} onPlay={() => playVoicing(chord.frets, "strum")} onRemove={() => removeChord(index)} onDuplicate={() => duplicateChord(index)} onMove={moveChord} />)}<button className="add-row-button" onClick={addEmpty}><span>＋</span> Add another chord row</button></div>}
     </section>
   </main>;
 }
 
 function ProgressionStripLegacy({ progression, activeSlotId, onSelect, onRemove }) {
-  return <div className="composer-strip"><div className="strip-label"><span className="kicker">YOUR PROGRESSION</span><span>{progression.length ? `${progression.length} STEP${progression.length === 1 ? "" : "S"}` : "EMPTY"}</span></div><div className="strip-steps">{progression.length ? progression.map((chord, index) => { const analysis = detectChord(chord.frets); return <div className={`strip-step-shell ${activeSlotId === chord.instanceId ? "active" : ""}`} key={chord.instanceId}><button className="strip-step" onClick={() => onSelect(chord)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{analysis.label === "No notes" ? "Empty" : analysis.label}</strong></button><button className="strip-remove" aria-label={`Remove chord ${index + 1}`} onClick={() => onRemove(chord.instanceId)}>×</button></div>; }) : <div className="strip-empty"><span>＋</span> Add a chord below to start building</div>}<button className="strip-add" onClick={() => onSelect(null)}>＋</button></div></div>;
+  return <div className="composer-strip"><div className="strip-label"><span className="kicker">YOUR PROGRESSION</span><span>{progression.length ? `${progression.length} STEP${progression.length === 1 ? "" : "S"}` : "EMPTY"}</span></div><div className="strip-steps">{progression.length ? progression.map((chord, index) => { const analysis = detectChord(chord.frets); return <div className={`strip-step-shell ${activeSlotId === chord.instanceId ? "active" : ""}`} key={chord.instanceId}><button className="strip-step" onClick={() => onSelect(chord)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{analysis.label === "No notes" ? "Empty" : analysis.label}</strong></button><button className="strip-remove" aria-label={`Remove chord ${index + 1}`} onClick={() => onRemove(chord.instanceId)}>×</button></div>; }) : <div className="strip-empty"><span>＋</span> Use the fretboard above to start building</div>}<button className="strip-add" onClick={() => onSelect(null)}>＋</button></div></div>;
 }
 
 function ProgressionStrip({ progression, activeSlotId, onSelect, onRemove }) {
@@ -339,10 +355,10 @@ function ProgressionStrip({ progression, activeSlotId, onSelect, onRemove }) {
     next.splice(toIndex, 0, moved);
     onSelect({ reorder: next });
   };
-  return <div className="composer-strip"><div className="strip-label"><span className="kicker">YOUR PROGRESSION</span><span>{progression.length ? progression.length + " STEP" + (progression.length === 1 ? "" : "S") : "EMPTY"}</span></div><div className="strip-steps">{progression.length ? progression.map((chord, index) => { const analysis = detectChord(chord.frets); const isDragging = draggingId === chord.instanceId; const isOver = overId === chord.instanceId && draggingId !== chord.instanceId; return <div className={"strip-step-shell " + (activeSlotId === chord.instanceId ? "active " : "") + (isDragging ? "dragging " : "") + (isOver ? "drop-target" : "")} key={chord.instanceId} draggable onDragStart={() => { setDraggingId(chord.instanceId); setOverId(null); }} onDragOver={(event) => { event.preventDefault(); if (draggingId !== chord.instanceId) setOverId(chord.instanceId); }} onDrop={(event) => { event.preventDefault(); dropChord(chord.instanceId); setDraggingId(null); setOverId(null); }} onDragEnd={() => { setDraggingId(null); setOverId(null); }}><button className="strip-step" onClick={() => onSelect(chord)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{analysis.label === "No notes" ? "Empty" : analysis.label}</strong></button><button className="strip-remove" aria-label={"Remove chord " + (index + 1)} onClick={() => onRemove(chord.instanceId)}>×</button></div>; }) : <div className="strip-empty"><span>＋</span> Add a chord below to start building</div>}<button className="strip-add" onClick={() => onSelect(null)}>＋</button></div></div>;
+  return <div className="composer-strip"><div className="strip-label"><span className="kicker">YOUR PROGRESSION</span><span>{progression.length ? progression.length + " STEP" + (progression.length === 1 ? "" : "S") : "EMPTY"}</span></div><div className="strip-steps">{progression.length ? progression.map((chord, index) => { const analysis = detectChord(chord.frets); const isDragging = draggingId === chord.instanceId; const isOver = overId === chord.instanceId && draggingId !== chord.instanceId; return <div className={"strip-step-shell " + (activeSlotId === chord.instanceId ? "active " : "") + (isDragging ? "dragging " : "") + (isOver ? "drop-target" : "")} key={chord.instanceId} draggable onDragStart={() => { setDraggingId(chord.instanceId); setOverId(null); }} onDragOver={(event) => { event.preventDefault(); if (draggingId !== chord.instanceId) setOverId(chord.instanceId); }} onDrop={(event) => { event.preventDefault(); dropChord(chord.instanceId); setDraggingId(null); setOverId(null); }} onDragEnd={() => { setDraggingId(null); setOverId(null); }}><button className="strip-step" onClick={() => onSelect(chord)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{analysis.label === "No notes" ? "Empty" : analysis.label}</strong></button><button className="strip-remove" aria-label={"Remove chord " + (index + 1)} onClick={() => onRemove(chord.instanceId)}>×</button></div>; }) : <div className="strip-empty"><span>＋</span> Use the fretboard above to start building</div>}<button className="strip-add" onClick={() => onSelect(null)}>＋</button></div></div>;
 }
 
-function ComposerPage({ selected, frets, setFrets, setSelected, progression, setProgression, activeSlotId, setActiveSlotId, onOpenLibrary }) {
+function ComposerPage({ selected, frets, setFrets, setSelected, progression, setProgression, activeSlotId, setActiveSlotId }) {
   const [bpm, setBpm] = useState(160);
   const hasPlayableChords = progression.some((chord) => activeNotes(chord.frets).length > 0);
   const activeIndex = progression.findIndex((chord) => chord.instanceId === activeSlotId);
@@ -355,6 +371,45 @@ function ComposerPage({ selected, frets, setFrets, setSelected, progression, set
   const duplicateSlot = () => { if (activeIndex < 0) return; const copy = makeProgressionChord(progression[activeIndex]); setProgression((current) => [...current.slice(0, activeIndex + 1), copy, ...current.slice(activeIndex + 1)]); setActiveSlotId(copy.instanceId); setSelected(copy); setFrets([...copy.frets]); };
   const moveActive = (amount) => { if (activeIndex < 0) return; const target = activeIndex + amount; if (target < 0 || target >= progression.length) return; const next = [...progression]; [next[activeIndex], next[target]] = [next[target], next[activeIndex]]; setProgression(next); };
   const loadTemplate = (template) => { const chords = template.ids.map((id) => makeProgressionChord(LIBRARY.find((entry) => entry.id === id))); setProgression(chords); setActiveSlotId(chords[0].instanceId); setSelected(chords[0]); setFrets([...chords[0].frets]); };
-  return <div className="app-grid composer-grid"><Library selectedId={selected.id} selected={selected} frets={frets} onSelect={selectLibraryShape} /><main className="composer-workspace"><div className="composer-heading"><div><h1>One fretboard.<br /><em>Many possibilities.</em></h1></div><p>Build your progression one chord at a time. Select a step to edit it, or add a new shape from the library.</p></div><ProgressionStrip progression={progression} activeSlotId={activeSlotId} onSelect={selectSlot} onRemove={removeSlot} /><div className="composer-toolbar"><div><p className="kicker">COMMON STARTING POINTS</p><span>Load a template, then make it yours.</span></div><label className="template-select"><span>CHOOSE PROGRESSION</span><select aria-label="Choose a common chord progression" value="" onChange={(event) => { const template = PROGRESSION_TEMPLATES.find((item) => item.id === event.target.value); if (template) loadTemplate(template); }}><option value="">Select a progression…</option>{PROGRESSION_TEMPLATES.map((template) => <option key={template.id} value={template.id}>{template.name} · {template.description}</option>)}</select></label></div><div className="composer-builder-controls"><label className="tempo-control"><span>BPM</span><input type="number" min="40" max="180" value={bpm} onChange={(event) => setBpm(Number(event.target.value) || 72)} /></label><button className="play-button primary" disabled={!hasPlayableChords} onClick={() => playProgression(progression, bpm)}><Icon>♬</Icon> Play all</button></div><ShapeEditor embedded selected={selected} frets={frets} setFrets={updateActiveFrets} onAddToProgression={addCurrent} /><p className="composer-hint">Tip: the library on the left stays available while you compose. Selecting a library shape edits the shared fretboard; use “Add to progression” to save it as a new step.</p></main></div>;
+  return <div className="app-grid composer-grid"><Library selectedId={selected.id} selected={selected} frets={frets} onSelect={selectLibraryShape} /><main className="composer-workspace"><div className="composer-heading"><div><h1>One fretboard.<br /><em>Many possibilities.</em></h1></div><p>Build your progression one chord at a time. Select a step to edit it, or add a new shape from the library.</p></div><ShapeEditor embedded selected={selected} frets={frets} setFrets={updateActiveFrets} onAddToProgression={addCurrent} /><ProgressionStrip progression={progression} activeSlotId={activeSlotId} onSelect={selectSlot} onRemove={removeSlot} /><div className="composer-toolbar"><label className="template-select"><select aria-label="Choose a common chord progression" value="" onChange={(event) => { const template = PROGRESSION_TEMPLATES.find((item) => item.id === event.target.value); if (template) loadTemplate(template); }}><option value="">Select a progression…</option>{PROGRESSION_TEMPLATES.map((template) => <option key={template.id} value={template.id}>{template.name} · {template.description}</option>)}</select></label><div className="composer-builder-controls"><label className="tempo-control"><span>BPM</span><input type="number" min="40" max="180" value={bpm} onChange={(event) => setBpm(Number(event.target.value) || 72)} /></label><button className="play-button primary" disabled={!hasPlayableChords} onClick={() => playProgression(progression, bpm)}><Icon>♬</Icon> Play progression</button></div></div><p className="composer-hint">Tip: the library on the left stays available while you compose. Selecting a library shape edits the shared fretboard; use “Add to progression” to save it as a new step.</p></main></div>;
 }
 
+function getInitialThemeMode() {
+  if (typeof window === "undefined") return "system";
+  try {
+    const saved = window.localStorage.getItem("chord-atlas-theme");
+    return ["system", "light", "dark"].includes(saved) ? saved : "system";
+  } catch {
+    return "system";
+  }
+}
+
+function App() {
+  const [selected, setSelected] = useState(LIBRARY.find((entry) => entry.id === "E-6-minor"));
+  const [frets, setFrets] = useState(selected.frets);
+  const [progression, setProgression] = useState([]);
+  const [activeSlotId, setActiveSlotId] = useState(null);
+  const [themeMode, setThemeMode] = useState(getInitialThemeMode);
+  const [systemTheme, setSystemTheme] = useState(() => typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  const activeTheme = themeMode === "system" ? systemTheme : themeMode;
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return undefined;
+    const media = window.matchMedia("(prefers-color-scheme: light)");
+    const update = () => setSystemTheme(media.matches ? "light" : "dark");
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = activeTheme;
+    try {
+      if (themeMode === "system") window.localStorage.removeItem("chord-atlas-theme");
+      else window.localStorage.setItem("chord-atlas-theme", themeMode);
+    } catch {
+      // Theme still applies for this session when storage is unavailable.
+    }
+  }, [activeTheme, themeMode]);
+  return <div className="app-shell"><Header themeMode={themeMode} onThemeChange={setThemeMode} /><ComposerPage selected={selected} frets={frets} setFrets={setFrets} setSelected={setSelected} progression={progression} setProgression={setProgression} activeSlotId={activeSlotId} setActiveSlotId={setActiveSlotId} /></div>;
+}
+
+createRoot(document.getElementById("root")).render(<StrictMode><App /></StrictMode>);
